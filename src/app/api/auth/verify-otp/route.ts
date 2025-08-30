@@ -15,7 +15,9 @@ export async function POST(req: Request) {
   if (!parse.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
 
   const { email, code } = parse.data;
+  console.log("email",email,"code",code);
   const ok = verifyOTP(email, code);
+  console.log("ok",ok);
   if (!ok) return NextResponse.json({ error: "Invalid code" }, { status: 400 });
 
   // session token
