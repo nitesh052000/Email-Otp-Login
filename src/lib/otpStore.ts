@@ -1,61 +1,27 @@
-import { sendMail } from "./mailer";
+// src/lib/otpStore.ts
+import { Redis } from "@upstash/redis";
 import crypto from "crypto";
 
-type OTPEntry = {
-  hash: string;
-  expiresAt: number;
-};
+const redis = Redis.fromEnv(); // Reads UPSTASH_REDIS_REST_URL & TOKEN from env
 
-declare global {
-  var otpStore: Map<string, OTPEntry> | undefined;
+function hashCode(code: string, secret: string) {
+  return crypto.createHmac("sha256", secret).update(code).digest("hex");
 }
 
-const store: Map<string, OTPEntry> = globalThis.otpStore || new Map();
-globalThis.otpStore = store;
-
-
-const SECRET = process.env.AUTH_SECRET;
-if (!SECRET) throw new Error("AUTH_SECRET is not set in .env.local");
-
-function hashCode(code: string) {
-  return crypto.createHmac("sha256", SECRET as string).update(code).digest("hex");
+export async function setOTP(email: string, code: string, ttlSec = 600) {
+  const secret = process.env.AUTH_SECRET!;
+  const hash = hashCode(code, secret);
+  await redis.set(email, hash, { ex: ttlSec });
+  console.log("OTP stored for", email);
 }
 
-export function setOTP(email: string, code: string, ttlMs = 10 * 60 * 1000) {
-  const hash = hashCode(code);
-  store.set(email, { hash, expiresAt: Date.now() + ttlMs });
-  console.log("store",store);
+export async function verifyOTP(email: string, code: string) {
+  const secret = process.env.AUTH_SECRET!;
+  const storedHash = await redis.get(email);
+  console.log("Stored OTP hash:", storedHash);
+  if (!storedHash) return false;
 
-  // send OTP email
-  sendMail(
-    email,
-    "Your OTP Code",
-    `Your OTP code is ${code}`,
-    `<p>Your OTP code is <b>${code}</b></p>`
-  );
-}
-
-export function verifyOTP(email: string, code: string) {
-  const entry = store.get(email);
-
-  // Check 1: Is the OTP entry even found?
-  console.log("OTP entry found:", !!entry);
-  if (!entry) return false;
-
-  // Check 2: Has the OTP expired?
-  console.log("OTP expired:", Date.now() > entry.expiresAt);
-  if (Date.now() > entry.expiresAt) {
-    store.delete(email);
-    return false;
-  }
-
-  // Check 3: Do the hashes match?
-  const hash = hashCode(code);
-  console.log("Stored hash:", entry.hash);
-  console.log("Generated hash:", hash);
-  const valid = entry.hash === hash;
-
-  console.log("OTP valid:", valid);
-  if (valid) store.delete(email); // consume OTP
+  const valid = storedHash === hashCode(code, secret);
+  if (valid) await redis.del(email); // consume OTP
   return valid;
 }

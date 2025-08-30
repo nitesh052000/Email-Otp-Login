@@ -1,15 +1,12 @@
+// src/middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(req: NextRequest) {
-  const session = req.cookies.get("session")?.value;
-  const isAuth = Boolean(session);
+  const token = req.cookies.get("session")?.value;
 
-  if (req.nextUrl.pathname === "/" && isAuth) {
-    return NextResponse.redirect(new URL("/hello", req.url));
-  }
-
-  if (req.nextUrl.pathname.startsWith("/hello") && !isAuth) {
+  // protect /hello route as example
+  if (!token && req.nextUrl.pathname.startsWith("/hello")) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
@@ -17,5 +14,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/hello"],
+  matcher: ["/hello"], // routes to protect
 };

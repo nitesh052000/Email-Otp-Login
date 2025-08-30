@@ -1,25 +1,19 @@
+// src/pages/api/auth/request-otp.ts
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { setOTP } from "@/lib/otpStore";
-
-const schema = z.object({ email: z.string().email() });
+import { sendMail } from "@/lib/mailer";
 
 export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    const parse = schema.safeParse(body);
-    if (!parse.success) {
-      return NextResponse.json({ error: "Invalid email" }, { status: 400 });
-    }
+  const { email } = await req.json();
+  const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
-    setOTP(parse.data.email, code);
+  await setOTP(email, code);
 
-    console.log("OTP for", parse.data.email, "=", code);
+  await sendMail(
+    email,
+    "Your Verification Code",
+    `<p>Your OTP is <strong>${code}</strong></p>`
+  );
 
-    return NextResponse.json({ ok: true, devCode: code });
-  } catch (err) {
-    console.error("request-otp error:", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
+  return NextResponse.json({ ok: true });
 }
