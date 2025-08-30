@@ -13,7 +13,7 @@ This is a simple Email OTP Login system built with Next.js 13, TypeScript, and U
 - Works in development and production
 
 ## Project Structure
-
+```
 otp-login/
 ├─ src/
 │ ├─ app/
@@ -30,7 +30,7 @@ otp-login/
 ├─ next.config.js
 ├─ .env # Environment variables
 └─ README.md
-
+```
 
 ## Setup
 
@@ -51,6 +51,7 @@ AUTH_SECRET=<random-secret-for-hashing>
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 
 npm run dev
+
 
 For production:
 
